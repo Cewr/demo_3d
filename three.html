@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>3d-model</title>
+	<meta http-equiv="Pragma" content="no-cache" />
+	<meta http-equiv="Cache-Control" content="no-cache" />
+	<meta http-equiv="Expires" content="0" />
+	<script type="text/javascript" src="libs/three.js"></script>
+	<script type="text/javascript" src="libs/OrbitControls.js"></script>
+	<script type="text/javascript" src="libs/OBJLoader.js"></script>
+	<script type="text/javascript" src="libs/GLTFLoader.js"></script>
+	<script type="text/javascript" src="libs/Tween.min.js"></script>
+	<script type="text/javascript" src="libs/dat.gui.js"></script>
+	<style>
+		body {
+			margin: 0;
+			overflow: hidden;
+		}
+
+		#link {
+			position: fixed;
+			top: 0;
+			left: 0;
+			z-index: 9;
+			color: white;
+		}
+	</style>
+</head>
+
+<body>
+	<a href="/" id="link">>>> index</a>
+	<div id="dom"></div>
+	<script type="text/javascript">
+		var camera;
+		var renderer;
+		var cloud;
+		//初始化一个空容器，装载粒子
+		var krq = new THREE.Object3D();
+		var textureLoader = new THREE.TextureLoader();
+		var group3 = new THREE.Group();
+
+		function init() {
+			// 创建一个场景，它将包含我们所有的元素，如物体，相机和灯光。
+			var scene = new THREE.Scene();
+
+			var cubeLoader = new THREE.CubeTextureLoader();
+
+			// 创建一个摄像机，它定义了我们正在看的地方
+			camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 20000);
+			// 将摄像机对准场景的中心
+			camera.position.x = 180;
+			camera.position.y = 80;
+			camera.position.z = 90;
+			camera.lookAt(scene.position);
+			var orbit = new THREE.OrbitControls(camera);
+
+			// 创建一个渲染器并设置大小，WebGLRenderer将会使用电脑显卡来渲染场景
+			renderer = new THREE.WebGLRenderer({
+				antialias: true,
+				logarithmicDepthBuffer: true,
+			});
+			renderer.setClearColor(new THREE.Color(0x121A39));
+			renderer.setSize(window.innerWidth, window.innerHeight);
+			var alight = new THREE.AmbientLight("#ffffff", 1);
+			alight.name = "aLight";
+			scene.add(alight);
+
+			// 在屏幕上显示坐标轴
+			var axes = new THREE.AxesHelper(80);
+
+			crateWall();
+
+			// 将呈现器的输出添加到HTML元素
+			document.getElementById("dom").appendChild(renderer.domElement);
+
+
+			// 启动动画
+			renderScene();
+
+			/**
+			 * 粒子 延迟发散
+			 * @param particle
+			 * @param delay
+			 */
+			function initParticle(particle, delay) {
+				particle.position.set(0, Math.random() + 12, 0);
+				particle.scale.x = particle.scale.y = Math.random() * 13;
+				//下面是一系列的动画
+				var xx = Math.random() * 40 - 20;
+				var yy = Math.cos((Math.PI / 100) * xx) * 80;
+				//位移
+				new TWEEN.Tween(particle.position)
+					.delay(delay)
+					.to({
+						x: xx,
+						y: yy,
+						z: Math.random() * 40 - 20
+					}, 2000)
+					.onComplete(function () {
+						initParticle(particle, delay);
+					})
+					.start();
+				// 大小
+				new TWEEN.Tween(particle.scale)
+					.delay(delay)
+					.to({
+						x: 0.01,
+						y: 0.01
+					}, 1000)
+					.start();
+			}
+
+			function crateWall() {
+				var objLoader = new THREE.GLTFLoader();
+				objLoader.load('assets/rd.gltf', function (gltf) {
+					gltf.scene.scale.set(1, 1, 1)
+					gltf.scene.position.set(-100, 0, 100);
+					gltf.scene.traverse(function (child) {
+						if (child.isMesh) { }
+					});
+					scene.add(gltf.scene);
+				});
+			}
+
+			function renderScene() {
+				orbit.update(); // 拖动
+				TWEEN.update();
+
+				if (cloud) {
+					var vertices = cloud.geometry.vertices;
+					vertices.forEach(function (v) {
+						v.y = v.y - (v.velocityY);
+						v.x = v.x - (v.velocityX);
+
+						if (v.y <= 0) v.y = 60;
+						if (v.x <= -20 || v.x >= 20) v.velocityX = v.velocityX * -0.8;
+					});
+					cloud.geometry.verticesNeedUpdate = true;
+				}
+
+				// 使用requestAnimationFrame函数进行渲染
+				requestAnimationFrame(renderScene);
+				renderer.render(scene, camera);
+			}
+
+			// 渲染的场景
+			renderer.render(scene, camera);
+		}
+		window.onload = init;
+
+		// 随着窗体的变化修改场景
+		function onResize() {
+			camera.aspect = window.innerWidth / window.innerHeight;
+			camera.updateProjectionMatrix();
+			renderer.setSize(window.innerWidth, window.innerHeight);
+		}
+		// 监听窗体调整大小事件
+		window.addEventListener('resize', onResize, false);
+	</script>
+</body>
+
+</html>
